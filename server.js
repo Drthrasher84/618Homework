@@ -1,14 +1,18 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+
 import express from 'express'
 import dotenv from 'dotenv'
 dotenv.config()
+
+import { generateSitemap } from './generateSitemap.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 async function createProdServer() {
   const app = express()
+
   app.use((await import('compression')).default())
   app.use(
     (await import('serve-static')).default(
@@ -19,6 +23,14 @@ async function createProdServer() {
     ),
   )
   app.use('*', async (req, res, next) => {
+    if (req.originalUrl === '/sitemap.xml') {
+      const sitemap = await generateSitemap()
+      return res
+        .status(200)
+        .set({ 'Content-Type': 'application/xml' })
+        .end(sitemap)
+    }
+
     try {
       let template = fs.readFileSync(
         path.resolve(__dirname, 'dist/client/index.html'),
@@ -32,12 +44,12 @@ async function createProdServer() {
       next(e)
     }
   })
+
   return app
 }
 
 async function createDevServer() {
   const app = express()
-  app.set('trust proxy', 1)
   const vite = await (
     await import('vite')
   ).createServer({
@@ -45,7 +57,16 @@ async function createDevServer() {
     appType: 'custom',
   })
   app.use(vite.middlewares)
+
   app.use('*', async (req, res, next) => {
+    if (req.originalUrl === '/sitemap.xml') {
+      const sitemap = await generateSitemap()
+      return res
+        .status(200)
+        .set({ 'Content-Type': 'application/xml' })
+        .end(sitemap)
+    }
+
     try {
       const templateHtml = fs.readFileSync(
         path.resolve(__dirname, 'index.html'),
@@ -64,6 +85,7 @@ async function createDevServer() {
       next(e)
     }
   })
+
   return app
 }
 
@@ -71,8 +93,7 @@ if (process.env.NODE_ENV === 'production') {
   const app = await createProdServer()
   app.listen(process.env.PORT, () =>
     console.log(
-      `ssr production server running on http://
-localhost:${process.env.PORT}`,
+      `ssr production server running on http://localhost:${process.env.PORT}`,
     ),
   )
 } else {
