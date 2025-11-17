@@ -1,0 +1,4 @@
+{
+    "schema": "https://automatic-potato-g4x45q7wqgwj3xv9-3000.app.github.dev/graphql",
+    "documents": "src/api/graphql1/**/*.{js,jsx}"
+}
